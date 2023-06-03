@@ -1,0 +1,130 @@
+output
+CPLEX 12.9.0.0: baropt 
+predual=-1
+crossover=0
+barstart= 4
+bardisplay=0
+prestats=0
+display=0
+timelimit 64800
+endsol ./output/solution.sol
+CPLEX 12.9.0.0: best solution found, primal-dual feasible; objective 1064066.983
+727 barrier iterations
+No basis.
+solve_result_num = 100
+
+_solve_elapsed_time = 2720
+
+%f\n 1910532.7362662433
+Total emissions: 1746782.562191018
+--------------SAVING PHASE -----------
+--------------SAVING F_new (phase) -----------
+--------------SAVING F_new (phase) -----------
+--------------SAVING F_old (phase) -----------
+--------------SAVING OPEX YEARLY costs -----------
+--------------SAVING CAPEX YEARLY (annualised) -----------
+--------------SAVING Cinv return -----------
+--------------SAVING GWP YEARLY (based on RES) -----------
+--------------SAVING F_new (phase) -----------
+--------------SAVING F_decomm_ALL (phase) -----------
+--------------SAVING F (years) -----------
+--------------SAVING Ressources over phase -----------
+--------------SAVING Mob public shares -----------
+--------------SAVING Elec shares -----------
+--------------SAVING HT shares -----------
+--------------SAVING LT_DEC shares -----------
+--------------SAVING LT_DHN shares -----------
+--------------SAVING EnergyStored shares -----------
+--------------SAVING synthetic fuels -----------
+-------------- SAVING CO2 NET YEARLY  -----------
+output/YEAR_2020
+--------------SAVING COSTS -----------
+--------------SAVING GWP_TECH -----------
+--------------SAVING RESOURCES -----------
+--------------SAVING GWP -----------
+--------------SAVING GWP_TECH -----------
+--------------SAVING RESOURCES -----------
+--------------SAVING GWP -----------
+--------------SAVING Losses -----------
+--------------SAVING ASSETS -----------
+--------------SAVING STORAGE -----------
+--------------SAVING LAYERS -----------
+--------- SAVING SANKEY --------
+output/YEAR_2025
+--------------SAVING COSTS -----------
+--------------SAVING GWP_TECH -----------
+--------------SAVING RESOURCES -----------
+--------------SAVING GWP -----------
+--------------SAVING GWP_TECH -----------
+--------------SAVING RESOURCES -----------
+--------------SAVING GWP -----------
+--------------SAVING Losses -----------
+--------------SAVING ASSETS -----------
+--------------SAVING STORAGE -----------
+--------------SAVING LAYERS -----------
+--------- SAVING SANKEY --------
+output/YEAR_2030
+--------------SAVING COSTS -----------
+--------------SAVING GWP_TECH -----------
+--------------SAVING RESOURCES -----------
+--------------SAVING GWP -----------
+--------------SAVING GWP_TECH -----------
+--------------SAVING RESOURCES -----------
+--------------SAVING GWP -----------
+--------------SAVING Losses -----------
+--------------SAVING ASSETS -----------
+--------------SAVING STORAGE -----------
+--------------SAVING LAYERS -----------
+--------- SAVING SANKEY --------
+output/YEAR_2035
+--------------SAVING COSTS -----------
+--------------SAVING GWP_TECH -----------
+--------------SAVING RESOURCES -----------
+--------------SAVING GWP -----------
+--------------SAVING GWP_TECH -----------
+--------------SAVING RESOURCES -----------
+--------------SAVING GWP -----------
+--------------SAVING Losses -----------
+--------------SAVING ASSETS -----------
+--------------SAVING STORAGE -----------
+--------------SAVING LAYERS -----------
+--------- SAVING SANKEY --------
+output/YEAR_2040
+--------------SAVING COSTS -----------
+--------------SAVING GWP_TECH -----------
+--------------SAVING RESOURCES -----------
+--------------SAVING GWP -----------
+--------------SAVING GWP_TECH -----------
+--------------SAVING RESOURCES -----------
+--------------SAVING GWP -----------
+--------------SAVING Losses -----------
+--------------SAVING ASSETS -----------
+--------------SAVING STORAGE -----------
+--------------SAVING LAYERS -----------
+--------- SAVING SANKEY --------
+output/YEAR_2045
+--------------SAVING COSTS -----------
+--------------SAVING GWP_TECH -----------
+--------------SAVING RESOURCES -----------
+--------------SAVING GWP -----------
+--------------SAVING GWP_TECH -----------
+--------------SAVING RESOURCES -----------
+--------------SAVING GWP -----------
+--------------SAVING Losses -----------
+--------------SAVING ASSETS -----------
+--------------SAVING STORAGE -----------
+--------------SAVING LAYERS -----------
+--------- SAVING SANKEY --------
+output/YEAR_2050
+--------------SAVING COSTS -----------
+--------------SAVING GWP_TECH -----------
+--------------SAVING RESOURCES -----------
+--------------SAVING GWP -----------
+--------------SAVING GWP_TECH -----------
+--------------SAVING RESOURCES -----------
+--------------SAVING GWP -----------
+--------------SAVING Losses -----------
+--------------SAVING ASSETS -----------
+--------------SAVING STORAGE -----------
+--------------SAVING LAYERS -----------
+--------- SAVING SANKEY --------

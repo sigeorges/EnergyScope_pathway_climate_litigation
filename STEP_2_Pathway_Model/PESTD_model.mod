@@ -69,7 +69,7 @@ set COGEN within TECHNOLOGIES; # cogeneration tech
 set BOILERS within TECHNOLOGIES; # boiler tech
 
 #NEW DEPENDENT:
-set AGE {TECHNOLOGIES,PHASE} within PHASE union {"2010_2015"} union {"STILL_IN_USE"};
+set AGE {TECHNOLOGIES,PHASE} within PHASE union {"2015_2020"} union {"STILL_IN_USE"};
 
 
 #################################
@@ -79,9 +79,9 @@ set AGE {TECHNOLOGIES,PHASE} within PHASE union {"2010_2015"} union {"STILL_IN_U
 ## NEW PARAMETERS FOR PATHWAY:
 param max_inv_phase {PHASE} default Infinity;#Unlimited
 param t_phase ;
-param diff_2015_phase {PHASE};
+param diff_2020_phase {PHASE};
 param gwp_limit_transition >=0 default Infinity; #To limit CO2 emissions over the transition
-param decom_allowed {PHASE,PHASE union {"2010_2015"},TECHNOLOGIES} default 0;
+param decom_allowed {PHASE,PHASE union {"2015_2020"},TECHNOLOGIES} default 0;
 param remaining_years {TECHNOLOGIES,PHASE} >=0;
 param limit_LT_renovation >= 0;
 param limit_pass_mob_changes >= 0;
@@ -152,15 +152,15 @@ param power_density_solar_thermal >=0 default 0;# Maximum power irradiance for s
 param total_time := sum {t in PERIODS, h in HOUR_OF_PERIOD [t], td in TYPICAL_DAY_OF_PERIOD [t]} (t_op [h, td]); # [h]. added just to simplify equations
 
 # NEW : PARAM DEPEN?DENT:
-param annualised_factor {p in PHASE} := 1 / ((1 + i_rate)^diff_2015_phase[p] ); # Annualisation factor for each different technology
+param annualised_factor {p in PHASE} := 1 / ((1 + i_rate)^diff_2020_phase[p] ); # Annualisation factor for each different technology
 
 #################################
 ###  VARIABLES [Tables 3-4]   ###
 #################################
 
 ## NEW VARIABLES FOR PATHWAY:
-var F_new {PHASE union {"2010_2015"}, TECHNOLOGIES} >= 0; #[GW/GWh] Accounts for the additional new capacity installed in a new phase
-var F_decom {PHASE,PHASE union {"2010_2015"}, TECHNOLOGIES} >= 0; #[GW] Accounts for the decommissioned capacity in a new phase
+var F_new {PHASE union {"2015_2020"}, TECHNOLOGIES} >= 0; #[GW/GWh] Accounts for the additional new capacity installed in a new phase
+var F_decom {PHASE,PHASE union {"2015_2020"}, TECHNOLOGIES} >= 0; #[GW] Accounts for the decommissioned capacity in a new phase
 var F_old {PHASE,TECHNOLOGIES} >=0, default 0; #[GW] Retired capacity during a phase with respect to the main output
 var C_inv_phase {PHASE} >=0; #[M€/GW] Phase total annualised investment cost
 var C_inv_return {TECHNOLOGIES} >=0; #[M€] Money given back for existing technologies after 2050 to compute the objective function
@@ -201,6 +201,148 @@ var GWP_constr {YEARS, TECHNOLOGIES} >= 0; # GWP_constr [ktCO2-eq.]: Total emiss
 var GWP_op {YEARS, RESOURCES} >= 0; #  GWP_op [ktCO2-eq.]: Total yearly emissions of the resources [ktCO2-eq./y]
 var Network_losses {YEARS, END_USES_TYPES, HOURS, TYPICAL_DAYS} >= 0; # Net_loss [GW]: Losses in the networks (normally electricity grid and DHN)
 var Storage_level {YEARS, STORAGE_TECH, PERIODS} >= 0; # Sto_level [GWh]: Energy stored at each period
+
+
+
+#--------------------------------------------------------------------------
+#--------------------------------------------------------------------------
+
+param co2_net{RESOURCES} >=0; 
+param co2_net_limit{YEARS} >=0; 
+
+var CO2_NET{YEARS, RESOURCES}; 
+var total_CO2_NET {YEARS};
+#var CO2_NET_NED{YEARS} >= 0;
+
+subject to CO2_NET_calc {y in YEARS, i in RESOURCES} :
+	CO2_NET [y,i] = co2_net [i] * sum {t in PERIODS, h in HOUR_OF_PERIOD [t], td in TYPICAL_DAY_OF_PERIOD [t]} ( F_t [y,i, h, td] * t_op [h, td] );
+
+subject to total_CO2_NET_calc {y in YEARS} :
+	total_CO2_NET[y] = sum {i in RESOURCES} CO2_NET [y,i] ;
+	
+subject to max_total_CO2_net {y in YEARS} : 
+	total_CO2_NET [y] <= co2_net_limit [y];
+
+/*
+set TECH_GAS_PROD;
+set RES_GAS;
+set TECH_H2_PROD;
+set RES_H2;
+set TECH_METHANOL_PROD;
+set RES_METHANOL;
+
+var GAS_PROD_BRUT{YEARS};
+var H2_PROD_BRUT{YEARS}; 
+var RES_H2_BRUT{YEARS, RES_H2};
+var RES_GAS_BRUT{YEARS, RES_GAS};
+var PART_H2_FOR_GAS{YEARS};
+var METHANOL_PROD_BRUT{YEARS};
+var RES_METHANOL_BRUT{YEARS, RES_METHANOL};
+
+var EF_av_H2{YEARS};
+var EF_av_gas{YEARS};
+var EF_av_methanol{YEARS};
+
+var CO2_NET_gas_to_hvc{YEARS};
+var CO2_NET_oil_to_hvc{YEARS};
+var CO2_NET_biomass_to_hvc{YEARS};
+var CO2_NET_methanol_to_hvc{YEARS};
+var CO2_NET_methanol_to_ned{YEARS};
+
+
+subject to gas_prod_brut_calc{y in YEARS} : #gas prod va soit dans gas soit dans sng sto qui va ensuite dans gas
+	GAS_PROD_BRUT[y] = sum{t in PERIODS, h in HOUR_OF_PERIOD[t], td in TYPICAL_DAY_OF_PERIOD[t]}
+	((F_t[y,"GAS", h, td] + F_t[y,"GAS_RE", h, td])*t_op[h,td] 
+	+ sum{tech in TECH_GAS_PROD}(layers_in_out[y, tech, "GAS"]*F_t[y, tech, h, td]));
+	
+subject to res_gas_brut_calc{y in YEARS, res in RES_GAS} : 
+	RES_GAS_BRUT[y, res] = (if res == "WOOD"
+	then 
+		sum{t in PERIODS, h in HOUR_OF_PERIOD[t], td in TYPICAL_DAY_OF_PERIOD[t]}- layers_in_out[y,"GASIFICATION_SNG", res]*F_t[y, "GASIFICATION_SNG", h, td]
+	else (if res == "WET_BIOMASS" then 
+		sum{t in PERIODS, h in HOUR_OF_PERIOD[t], td in TYPICAL_DAY_OF_PERIOD[t]}(-layers_in_out[y,"BIOMETHANATION",res]*F_t[y,"BIOMETHANATION",h,td] - layers_in_out[y,"BIO_HYDROLYSIS",res]*F_t[y,"BIO_HYDROLYSIS",h,td])
+	else (if res == "H2" then 
+		sum{t in PERIODS, h in HOUR_OF_PERIOD[t], td in TYPICAL_DAY_OF_PERIOD[t]}(-layers_in_out[y,"SYN_METHANATION",res]*F_t[y,"SYN_METHANATION",h,td])
+	else (if res == "GAS" then 
+		sum{t in PERIODS, h in HOUR_OF_PERIOD[t], td in TYPICAL_DAY_OF_PERIOD[t]} F_t[y,res, h, td]*t_op[h,td]
+	else (if res == "GAS_RE" then 
+		sum{t in PERIODS, h in HOUR_OF_PERIOD[t], td in TYPICAL_DAY_OF_PERIOD[t]} F_t[y,res, h, td]*t_op[h,td]
+	)))));
+	
+subject to h2_prod_brut_calc{y in YEARS} : #tout le h2
+	H2_PROD_BRUT[y] = sum{t in PERIODS, h in HOUR_OF_PERIOD[t], td in TYPICAL_DAY_OF_PERIOD[t]}
+	((F_t[y,"H2", h, td] + F_t[y,"H2_RE", h, td])*t_op[h,td] 
+	+ sum{tech in TECH_H2_PROD}(layers_in_out[y, tech, "H2"]*F_t[y, tech, h, td]));
+	
+subject to res_h2_brut_calc{y in YEARS, res in RES_H2} : #toutes les ressources pour le h2
+	RES_H2_BRUT[y, res] = (if res == "WOOD"
+	then 
+		sum{t in PERIODS, h in HOUR_OF_PERIOD[t], td in TYPICAL_DAY_OF_PERIOD[t]} -layers_in_out[y,"H2_BIOMASS", res]*F_t[y,"H2_BIOMASS", h, td]
+	else (if res == "GAS" then 
+		sum{t in PERIODS, h in HOUR_OF_PERIOD[t], td in TYPICAL_DAY_OF_PERIOD[t]} -layers_in_out[y,"SMR",res] * F_t [y,"SMR", h, td]	
+	else (if res == "H2" then 
+		sum{t in PERIODS, h in HOUR_OF_PERIOD[t], td in TYPICAL_DAY_OF_PERIOD[t]} F_t[y,res, h, td]*t_op[h,td]
+	else (if res == "H2_RE" then
+		sum{t in PERIODS, h in HOUR_OF_PERIOD[t], td in TYPICAL_DAY_OF_PERIOD[t]} F_t[y,res, h, td]*t_op[h,td]
+	))));
+
+subject to part_h2_for_gas_calc{y in YEARS} : 
+	PART_H2_FOR_GAS[y] = RES_GAS_BRUT[y, "H2"]/(sum{res in RES_H2}RES_H2_BRUT[y,res]);
+	
+subject to ef_av_h2_calc{y in YEARS} : 
+	EF_av_H2[y] = (sum{res in RES_H2}(co2_net[res]*RES_H2_BRUT[y, res]))/(sum{res in RES_H2}RES_H2_BRUT[y, res]);
+	
+subject to ef_av_gas_calc{y in YEARS} : 
+	EF_av_gas[y] = (sum{res in RES_GAS}(co2_net[res]*RES_GAS_BRUT[y, res]))/(sum{res in RES_GAS}RES_GAS_BRUT[y, res]);
+
+
+subject to methanol_prod_brut_calc{y in YEARS} :
+	METHANOL_PROD_BRUT[y] = sum{t in PERIODS, h in HOUR_OF_PERIOD[t], td in TYPICAL_DAY_OF_PERIOD[t]}
+	((F_t[y,"METHANOL", h, td] + F_t[y,"METHANOL_RE", h, td])*t_op[h,td] 
+	+ sum{tech in TECH_METHANOL_PROD}(layers_in_out[y, tech, "METHANOL"]*F_t[y, tech, h, td]));
+
+subject to res_methanol_brut_calc{y in YEARS, res in RES_METHANOL} : 
+	RES_METHANOL_BRUT[y, res] = (if res == "WOOD"
+	then 
+		sum{t in PERIODS, h in HOUR_OF_PERIOD[t], td in TYPICAL_DAY_OF_PERIOD[t]}(- layers_in_out[y,"BIOMASS_TO_METHANOL", res]*F_t[y, "BIOMASS_TO_METHANOL", h, td]
+		- layers_in_out[y,"SYN_METHANOLATION",res]*F_t[y,"SYN_METHANOLATION",h,td])
+	else (if res == "GAS" then 
+		sum{t in PERIODS, h in HOUR_OF_PERIOD[t], td in TYPICAL_DAY_OF_PERIOD[t]}(-layers_in_out[y,"METHANE_TO_METHANOL",res]*F_t[y,"METHANE_TO_METHANOL",h,td])
+	else (if res == "METHANOL" then 
+		sum{t in PERIODS, h in HOUR_OF_PERIOD[t], td in TYPICAL_DAY_OF_PERIOD[t]} F_t[y,res, h, td]*t_op[h,td]
+	else (if res == "METHANOL_RE" then 
+		sum{t in PERIODS, h in HOUR_OF_PERIOD[t], td in TYPICAL_DAY_OF_PERIOD[t]} F_t[y,res, h, td]*t_op[h,td]
+	))));
+	
+subject to ef_av_methanol_calc{y in YEARS} : 
+	EF_av_methanol[y] = ((-co2_net["GAS"]+ EF_av_gas[y])*RES_METHANOL_BRUT[y, "GAS"]+sum{res in RES_METHANOL}(co2_net[res]*RES_METHANOL_BRUT[y, res]))/(sum{res in RES_METHANOL}RES_METHANOL_BRUT[y, res]);
+	
+	
+	
+subject to emissions_gas_to_HVC_calc{y in YEARS} : 
+	CO2_NET_gas_to_hvc[y] = (sum{t in PERIODS, h in HOUR_OF_PERIOD[t], td in TYPICAL_DAY_OF_PERIOD[t]} -layers_in_out[y,"GAS_TO_HVC","GAS"]*F_t[y,"GAS_TO_HVC",h,td])*EF_av_gas[y];
+
+subject to emissions_oil_to_hvc_calc{y in YEARS} : 
+	CO2_NET_oil_to_hvc[y] = (sum{t in PERIODS, h in HOUR_OF_PERIOD[t], td in TYPICAL_DAY_OF_PERIOD[t]} -layers_in_out[y,"OIL_TO_HVC","LFO"]*F_t[y,"OIL_TO_HVC",h,td])*co2_net["LFO"];
+
+subject to emissions_biomass_to_hvc_calc{y in YEARS} : 
+	CO2_NET_biomass_to_hvc[y] = (sum{t in PERIODS, h in HOUR_OF_PERIOD[t], td in TYPICAL_DAY_OF_PERIOD[t]} -layers_in_out[y,"BIOMASS_TO_HVC","WOOD"]*F_t[y,"BIOMASS_TO_HVC",h,td])*co2_net["WOOD"];
+
+subject to emissions_methanol_to_hvc_calc{y in YEARS} : 
+	CO2_NET_methanol_to_hvc[y] = (sum{t in PERIODS, h in HOUR_OF_PERIOD[t], td in TYPICAL_DAY_OF_PERIOD[t]} -layers_in_out[y,"METHANOL_TO_HVC","METHANOL"]*F_t[y,"METHANOL_TO_HVC",h,td])*EF_av_methanol[y];
+
+subject to emissions_methanol_to_ned_calc{y in YEARS} : 
+	CO2_NET_methanol_to_ned[y] = sum{t in PERIODS, h in HOUR_OF_PERIOD[t], td in TYPICAL_DAY_OF_PERIOD[t]}End_uses[y, "METHANOL", h, td]*EF_av_methanol[y];
+
+
+subject to CO2_NET_NED_calc{y in YEARS} : 
+	CO2_NET_NED[y] = CO2_NET_gas_to_hvc[y] + CO2_NET_oil_to_hvc[y] + CO2_NET_biomass_to_hvc[y] + CO2_NET_methanol_to_hvc[y] + CO2_NET_methanol_to_ned[y];
+
+*/
+#--------------------------------------------------------------------------
+#--------------------------------------------------------------------------
+
+
 
 #########################################
 ###      CONSTRAINTS Eqs [1-42]       ###
@@ -280,7 +422,7 @@ subject to gwp_op_calc {y in YEARS, i in RESOURCES}:
 
 # [Eq. XX] total transition gwp calculation
 subject to totalGWPTransition_calculation : # category: GWP_calc
-	TotalGWPTransition = TotalGWP ["YEAR_2015"] + sum {p in PHASE,y_start in PHASE_START [p],y_stop in PHASE_STOP [p]}  (t_phase * (TotalGWP [y_start] + TotalGWP [y_stop])/2);
+	TotalGWPTransition = TotalGWP ["YEAR_2020"] + sum {p in PHASE,y_start in PHASE_START [p],y_stop in PHASE_STOP [p]}  (t_phase * (TotalGWP [y_start] + TotalGWP [y_stop])/2);
 	
 ## Multiplication factor
 #-----------------------
@@ -449,13 +591,14 @@ subject to peak_lowT_dhn {y in YEARS}:
 #-----------------------------------------------------------------------------------------------------------------------
 
 # [Eq. 34]  constraint to reduce the GWP subject to gwp_limit :
+/*
 subject to minimum_GWP_reduction  {y in YEARS} :
 	TotalGWP [y] <= gwp_limit [y];
 
 # [Eq. XX] Constraint to limit the emissions below a budget (gwp_limit_transition) 
 subject to minimum_GWP_transition  : # category: GWP_calc
 	TotalGWPTransition <= gwp_limit_transition;
-
+*/
 
 # [Eq. 35] Minimum share of RE in primary energy supply
 subject to Minimum_RE_share {y in YEARS} :
@@ -482,7 +625,7 @@ subject to solar_area_limited {y in YEARS} :
 	F[y, "PV"] / power_density_pv + ( F [y, "DEC_SOLAR"] + F [y, "DHN_SOLAR"] ) / power_density_solar_thermal <= solar_area [y];
 
 # [Eq. XX] Force the system to consume all the WASTE available.
-subject to use_all_the_waste {y in YEARS diff {"YEAR_2015"}} : # I don't know why this constraint should be removed. 
+subject to use_all_the_waste {y in YEARS diff {"YEAR_2020"}} : # I don't know why this constraint should be removed. 
 	sum {t in PERIODS, h in HOUR_OF_PERIOD[t], td in TYPICAL_DAY_OF_PERIOD[t]} (F_t [y,"WASTE",h,td] * t_op[h,td]) = avail [y,"WASTE"];
 
 
@@ -492,15 +635,15 @@ subject to use_all_the_waste {y in YEARS diff {"YEAR_2015"}} : # I don't know wh
 # [Eq. XX] Relate the installed capacity between years
 subject to phase_new_build {p in PHASE, y_start in PHASE_START[p], y_stop in PHASE_STOP[p], i in TECHNOLOGIES}:
 	F[y_stop,i] = F[y_start,i] + F_new[p,i] - F_old [p,i] 
-  											     - sum {p2 in {PHASE union {"2010_2015"}}} F_decom[p,p2,i];
+  											     - sum {p2 in {PHASE union {"2015_2020"}}} F_decom[p,p2,i];
 
 # [Eq. XX] Impose decom_allowed to 0 when not physical
-subject to define_f_decom_properly {p_decom in PHASE, p_built in PHASE union {"2010_2015"}, i in TECHNOLOGIES}:
+subject to define_f_decom_properly {p_decom in PHASE, p_built in PHASE union {"2015_2020"}, i in TECHNOLOGIES}:
 	if decom_allowed[p_decom,p_built,i] == 0 then F_decom [p_decom,p_built,i] = 0;
 
 # [Eq. XX] Intialise the first phase based on YEAR_2015 results
 subject to F_new_initiatlisation {tech in TECHNOLOGIES}:
-	F_new ["2010_2015",tech] = F["YEAR_2015",tech]; # Generate F_new2010_2015
+	F_new ["2015_2020",tech] = F["YEAR_2020",tech]; # Generate F_new2010_2015
 
 # [Eq. XX] Impose the exact capacity that reaches its lifetime
 subject to phase_out_assignement {i in TECHNOLOGIES, p in PHASE, age in AGE [i,p]}:
@@ -539,13 +682,13 @@ subject to New_totalTransitionCost_calculation :
 	
 # [Eq. XX] Compute capital expenditure for transition
 subject to total_capex: # category: COST_calc
-	C_tot_capex = sum {i in TECHNOLOGIES} C_inv ["YEAR_2015",i] # 2015 investment
+	C_tot_capex = sum {i in TECHNOLOGIES} C_inv ["YEAR_2020",i] # 2015 investment
 				 + sum{p in PHASE} C_inv_phase [p]
 				 - sum {i in TECHNOLOGIES} C_inv_return [i];# euros_2015
 				 
 # [Eq. XX] Compute operating cost for transition
 subject to Opex_tot_cost_calculation :# category: COST_calc
-	C_tot_opex = C_opex["YEAR_2015"] 
+	C_tot_opex = C_opex["YEAR_2020"] 
 				 + t_phase *  sum {p in PHASE,y_start in PHASE_START [p],y_stop in PHASE_STOP [p]} ( 
 					                 (C_opex [y_start] + C_opex [y_stop])/2 *annualised_factor[p] ); #In euros_2015
 

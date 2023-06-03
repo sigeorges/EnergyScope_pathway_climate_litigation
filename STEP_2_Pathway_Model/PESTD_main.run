@@ -17,7 +17,15 @@ data PESTD_data_set_AGE.dat;  # Defining the set AGE depending on the lifetime o
 data PESTD_data_decom_allowed.dat;  # Defining the params decom_allowed depending on the lifetime of technologies
 
 #Initilaisation:
-model PESTD_initialise_2015.mod;
+# TODO : 
+# model PESTD_initialise_2020.mod;
+# garder le model.mod mais rajouter fichier de contraintes pour 2020 
+# décommenter contraintes secteur par secteur pour voir d'où vient le bug
+# secteur électrique pourrait être surcontraint car quantité à produire spécifiée, pas dans les autres secteurs
+
+# pour la NED : matrice d'efficacité. Pour def demande en ned et efficacité : lien entre production de meth, amm, etc et le FEC
+# demander à Paolo la source des facteurs d'emissions
+model PESTD_initialise_2020.mod;
 
 ################################################################################
 ################################################################################                                                    
@@ -85,9 +93,9 @@ param PathName symbolic default "output";
 			let PathName := "output";
 			## Print Phase info to txt file.
 			print "--------------SAVING PHASE -----------";
-			printf "%s\t%s\t%s\t%s\n", "Phase", "Inv.", "Inv. max", "YEAR - 2015 = ?" > (PathName & "/phase.txt"); 
+			printf "%s\t%s\t%s\t%s\n", "Phase", "Inv.", "Inv. max", "YEAR - 2020 = ?" > (PathName & "/phase.txt"); 
 			for {p in PHASE}{
-				printf "%s\t%.6f\t%.6f\t%.6f\n", p, C_inv_phase[p], max_inv_phase[p], diff_2015_phase[p]   >> (PathName & "/phase.txt");
+				printf "%s\t%.6f\t%.6f\t%.6f\n", p, C_inv_phase[p], max_inv_phase[p], diff_2020_phase[p]   >> (PathName & "/phase.txt");
 			}
 			## Print F_new info to txt file.
 			print "--------------SAVING F_new (phase) -----------";
@@ -178,13 +186,13 @@ param PathName symbolic default "output";
 			## Print F_decomm info to txt file.
 			print "--------------SAVING F_new (phase) -----------";
 			printf "TECH\t" > (PathName & "/F_decomm.txt");
-			for {p in {{"2010_2015"} union PHASE}}{
+			for {p in {{"2015_2020"} union PHASE}}{
 				printf "%s\t", p >> (PathName & "/F_decomm.txt");
 			}
 			for {j in TECHNOLOGIES}{
 				printf "\n %s\t",j  >> (PathName & "/F_decomm.txt");
 				for {p in PHASE }{
-					for {pbuilt in {{"2010_2015"} union PHASE}}{
+					for {pbuilt in {{"2015_2020"} union PHASE}}{
 						printf " %.6f\t", F_decom[p,pbuilt,j]  >> (PathName & "/F_decomm.txt");
 					}
 				}
@@ -225,7 +233,7 @@ param PathName symbolic default "output";
 			}
 			for {i in RESOURCES}{
 				printf "\n %s\t",i  >> (PathName & "/RES.txt");
-				printf "%.6f\t",avail ["YEAR_2015",i]   >> (PathName & "/RES.txt"); 
+				printf "%.6f\t",avail ["YEAR_2020",i]   >> (PathName & "/RES.txt"); 
 				for {y in YEARS}{
 					printf " %.6f\t",sum {t in PERIODS, h in HOUR_OF_PERIOD[t], td in TYPICAL_DAY_OF_PERIOD[t]} (F_t [y,i,h,td] * t_op [h, td])  >> (PathName & "/RES.txt");
 				}
@@ -331,7 +339,28 @@ param PathName symbolic default "output";
 				for {y in YEARS }{
 					printf " %f\t",  sum {t in PERIODS, h in HOUR_OF_PERIOD[t], td in TYPICAL_DAY_OF_PERIOD[t]}
 					F_t [y,tech, h, td] >> (PathName & "/Infrastructure.txt");
-			}}				
+			}}
+			
+			
+			print "-------------- SAVING CO2 NET YEARLY  -----------";
+			printf "Emissions [ktCO2]\t" > (PathName & "/CO2NET_YEARLY.txt");
+			for {y in YEARS}{
+				printf "%s\t", y >> (PathName & "/CO2NET_YEARLY.txt");
+			}
+			printf "\n" >> (PathName & "/CO2NET_YEARLY.txt");
+			for {y in YEARS}{
+				printf " %.6f\t", total_CO2_NET [y] >> (PathName & "/CO2NET_YEARLY.txt");
+			}	
+			
+			/*print "-------------- SAVING CO2 NET NED YEARLY  -----------";
+			printf "Emissions [ktCO2]\t" > (PathName & "/NED_YEARLY.txt");
+			for {y in YEARS}{
+				printf "%s\t", y >> (PathName & "/NED_YEARLY.txt");
+			}
+			printf "\n" >> (PathName & "/NED_YEARLY.txt");
+			for {y in YEARS}{
+				printf " %.6f\t", CO2_NET_NED [y] >> (PathName & "/NED_YEARLY.txt");
+			}*/
 		
 			 
 			for {y in YEARS}{ 
@@ -813,7 +842,7 @@ param PathName symbolic default "output";
 					"#D3D3D3", "TWh" > (PathName & "/input2sankey.csv");
 			if sum{t in PERIODS, h in HOUR_OF_PERIOD[t], td in TYPICAL_DAY_OF_PERIOD[t]}(F_t [y,"CAR_DIESEL", h, td]  ) > 10 then
 				printf "%s,%s,%.2f,%s,%s,%s\n", "Diesel" , "Mob priv", sum{t in PERIODS, h in HOUR_OF_PERIOD[t], td in 
-					TYPICAL_DAY_OF_PERIOD[t]}(layers_in_out[y,"CAR_DIESEL","DIESEL"] * F_t [y,"CAR_DIESEL", h, td]  ) / 1000 , "Diesel", 
+					TYPICAL_DAY_OF_PERIOD[t]}(-layers_in_out[y,"CAR_DIESEL","DIESEL"] * F_t [y,"CAR_DIESEL", h, td]  ) / 1000 , "Diesel", 
 					"#D3D3D3", "TWh" > (PathName & "/input2sankey.csv");
 			if sum{t in PERIODS, h in HOUR_OF_PERIOD[t], td in TYPICAL_DAY_OF_PERIOD[t]} ((F_t [y,"BUS_COACH_DIESEL", h, td] + 
 			F_t [y,"BUS_COACH_HYDIESEL", h, td])  ) > 10 then
@@ -1225,7 +1254,7 @@ param PathName symbolic default "output";
 					TYPICAL_DAY_OF_PERIOD[t]}(layers_in_out[y, "PYROLYSIS_TO_LFO","ELECTRICITY"] * F_t [y, "PYROLYSIS_TO_LFO", h, td]  ) / 1000 , "Electricity", "#00BFFF", "TWh" >> 
 					(PathName & "/input2sankey.csv");	
 				printf "%s,%s,%.2f,%s,%s,%s\n", "Pyrolysis" , "Oil", sum{t in PERIODS, h in HOUR_OF_PERIOD[t], td in 
-					TYPICAL_DAY_OF_PERIOD[t]}(layers_in_out[y, "PYROLYSIS_TO_LFO","OIL"] * F_t [y, "PYROLYSIS_TO_LFO", h, td]  ) / 1000 , "Oil", "#8B008B", "TWh" >> 
+					TYPICAL_DAY_OF_PERIOD[t]}(layers_in_out[y, "PYROLYSIS_TO_LFO","LFO"] * F_t [y, "PYROLYSIS_TO_LFO", h, td]  ) / 1000 , "Oil", "#8B008B", "TWh" >> 
 					(PathName & "/input2sankey.csv");
 			}			
 			if sum{t in PERIODS, h in HOUR_OF_PERIOD[t], td in TYPICAL_DAY_OF_PERIOD[t]}((F_t [y, "PYROLYSIS_TO_FUELS", h, td])  ) > 10 then {
@@ -1293,4 +1322,4 @@ param PathName symbolic default "output";
 		}# END SAVING			
 
 }
-}}#End cartography loop
+#End cartography loop
